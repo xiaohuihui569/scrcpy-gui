@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>scrcpy GUI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ── Title bar ─────────────────────────────────────────── -->
+    <header class="titlebar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">scrcpy GUI</span>
+        <span class="brand-sub" id="appVersion"></span>
+      </div>
+      <div class="titlebar-right">
+        <button class="icon-btn" id="helpBtn" title="使用教程">❓</button>
+        <button class="icon-btn" id="settingsBtn" title="设置">⚙</button>
+        <span class="status-pill" id="adbStatus"><i></i><span>连接中…</span></span>
+      </div>
+    </header>
+
+    <!-- ── Global error banner ───────────────────────────────── -->
+    <div class="banner hidden" id="errorBanner">
+      <span class="banner-icon">⚠</span>
+      <span class="banner-text" id="errorBannerText"></span>
+      <button class="banner-close" id="errorBannerClose">✕</button>
+    </div>
+
+    <div class="body">
+      <!-- ── Left: device list ───────────────────────────────── -->
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <h2>设备</h2>
+          <button class="icon-btn" id="refreshBtn" title="刷新设备列表">⟳</button>
+        </div>
+
+        <div class="tcpip-row">
+          <input type="text" id="tcpipInput" placeholder="自动获取中…" spellcheck="false"
+                 title="手机的 Wi-Fi IP，可手动修改" />
+          <button class="icon-btn" id="tcpipIpRefreshBtn" title="重新获取手机 IP">↻</button>
+        </div>
+        <div class="tcpip-row">
+          <input type="text" id="tcpipPortInput" placeholder="端口" value="5555" spellcheck="false"
+                 title="TCP/IP 调试端口，默认 5555" data-auto="1" />
+          <span class="field-label">TCP/IP 调试端口</span>
+        </div>
+        <div class="tcpip-actions">
+          <button class="ghost-btn" id="tcpipBtn">连接</button>
+          <button class="ghost-btn" id="tcpipModeBtn" title="让设备切换到网络调试模式（需先在设备上确认）">开启网络调试</button>
+        </div>
+
+        <div class="device-list" id="deviceList"></div>
+
+        <div class="sidebar-foot">
+          <button class="ghost-btn wide" id="openResDirBtn">打开 scrcpy 目录</button>
+        </div>
+      </aside>
+
+      <!-- ── Right: controls ─────────────────────────────────── -->
+      <main class="main">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📱</div>
+          <h3>未选择设备</h3>
+          <p>请在左侧选择一台已连接的 Android 设备，或输入 IP 地址连接网络设备。</p>
+        </div>
+
+        <div class="content hidden" id="content">
+          <!-- device header -->
+          <div class="dev-header">
+            <div class="dev-title">
+              <h2 id="devName">—</h2>
+              <span class="dev-meta" id="devMeta"></span>
+            </div>
+            <div class="dev-actions">
+              <span class="state-badge" id="sessionBadge"><i></i><span>未启动</span></span>
+            </div>
+          </div>
+
+          <!-- pending restart notice -->
+          <div class="notice hidden" id="dirtyNotice">
+            <span>参数已修改，重启镜像后生效。</span>
+            <button class="mini-btn" id="dirtyRestartBtn">重启镜像</button>
+          </div>
+
+          <!-- main actions -->
+          <div class="action-row">
+            <button class="primary-btn" id="startBtn">启动镜像</button>
+            <button class="danger-btn" id="stopBtn" disabled>停止</button>
+            <button class="ghost-btn" id="restartBtn" disabled>重启</button>
+          </div>
+
+          <!-- quick keys -->
+          <section class="card">
+            <div class="card-head">
+              <h3>快捷操作</h3>
+              <span class="hint">即时生效，通过 ADB 直接发送</span>
+            </div>
+            <div class="keygrid" id="keyGrid"></div>
+          </section>
+
+          <!-- parameters -->
+          <section class="card">
+            <div class="card-head">
+              <h3>镜像参数</h3>
+              <span class="hint">改动后需重启镜像</span>
+            </div>
+            <div id="paramGroups"></div>
+            <div class="param-foot">
+              <label class="checkbox">
+                <input type="checkbox" id="applyToDefault" />
+                <span>同时保存为新设备默认</span>
+              </label>
+              <button class="ghost-btn small" id="resetBtn">恢复默认</button>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- ── Log drawer ────────────────────────────────────────── -->
+    <div class="drawer" id="drawer">
+      <div class="drawer-head" id="drawerHead">
+        <span class="drawer-caret">▾</span>
+        <h3>运行日志</h3>
+        <span class="drawer-count" id="logCount">0</span>
+        <div class="drawer-tools">
+          <label class="checkbox tiny">
+            <input type="checkbox" id="autoScroll" checked />
+            <span>自动滚动</span>
+          </label>
+          <button class="ghost-btn tiny" id="copyLogBtn">复制</button>
+          <button class="ghost-btn tiny" id="clearLogBtn">清空</button>
+        </div>
+      </div>
+      <div class="drawer-body">
+        <div class="log-empty" id="logEmpty">暂无日志</div>
+        <pre class="log-view" id="logView"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ──────────────────────────────────────────────── -->
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <!-- ── Tutorial / help ─────────────────────────────── -->
+  <div class="modal hidden" id="tutorialModal">
+    <div class="modal-box tutorial-box">
+      <div class="modal-head">
+        <h3>使用教程</h3>
+        <button class="icon-btn" id="tutorialClose">✕</button>
+      </div>
+      <div class="modal-body tutorial-body">
+        <ol class="tut-list">
+          <li>
+            <b>连接手机</b>
+            <span>用数据线连接手机，手机上开启「开发者选项 → USB 调试」。设备会自动出现在左侧列表，带蓝色「有线」标签。</span>
+          </li>
+          <li>
+            <b>开启网络调试（可选）</b>
+            <span>先选中手机，端口框会自动填入 Wi-Fi IP，默认 5555。点「开启网络调试」后手机会弹出确认，点允许后即可拔掉 USB 线。</span>
+          </li>
+          <li>
+            <b>启动镜像</b>
+            <span>点「启动镜像」后会弹出原生 scrcpy 窗口，画面由原生窗口展示，模拟器本身不渲染画面。</span>
+          </li>
+          <li>
+            <b>快捷操作</b>
+            <span>返回、主页、音量、电源等按钮通过 ADB 立即生效，无需重启。截图会保存到图片文件夹。</span>
+          </li>
+          <li>
+            <b>镜像参数</b>
+            <span>分画质、窗口、音视频等分组设置。改动后顶部会出现「参数已修改」提示，点「重启镜像」生效。</span>
+          </li>
+          <li>
+            <b>重命名与标注</b>
+            <span>双击左侧设备名称可修改（回车保存，留空清除）。名称按机型保存，无线设备 IP 变了也不会丢。绿色「无线」与蓝色「有线」标签区分连接方式。</span>
+          </li>
+        </ol>
+        <div class="tut-keys">
+          <b>快捷键</b>
+          <span class="tut-kbd">Ctrl+R</span>重启镜像
+          <span class="tut-kbd">Delete</span>停止
+          <span class="tut-kbd">F5</span>刷新设备
+          <span class="tut-kbd">Ctrl+,</span>设置
+        </div>
+      </div>
+      <div class="modal-actions tutorial-actions">
+        <label class="checkbox">
+          <input type="checkbox" id="tutorialDontShow" />
+          <span>不再自动提示</span>
+        </label>
+        <button class="primary-btn small" id="tutorialOk">开始使用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings dialog ────────────────────────────────────── -->
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>设置</h3>
+        <button class="icon-btn" id="settingsClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="kv"><span>版本</span><b id="setVersion">—</b></div>
+        <div class="kv"><span>scrcpy 目录</span><b id="setResDir" class="mono-wrap">—</b></div>
+        <div class="kv"><span>配置文件</span><b id="setProfilePath" class="mono-wrap">—</b></div>
+        <div class="kv"><span>组件完整性</span><b id="setIntegrity">—</b></div>
+        <div class="kv"><span>日志目录</span><b id="setLogPath" class="mono-wrap">—</b></div>
+        <div class="modal-actions">
+          <button class="ghost-btn" id="openAppDataBtn">打开数据目录</button>
+          <button class="primary-btn small" id="settingsOk">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

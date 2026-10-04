@@ -1,0 +1,91 @@
+{
+  "name": "scrcpy-gui",
+  "productName": "scrcpy GUI",
+  "version": "0.1.0",
+  "description": "A dark-theme launcher and control panel for scrcpy",
+  "main": "electron/main.js",
+  "author": "scrcpy-gui",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder --win",
+    "dist:installer": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^32.2.6",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "asar": true,
+    "appId": "com.scrcpygui.launcher",
+    "productName": "scrcpy GUI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "renderer/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": ".",
+        "to": "scrcpy",
+        "filter": [
+          "scrcpy.exe",
+          "scrcpy-server",
+          "scrcpy-noconsole.vbs",
+          "scrcpy.png",
+          "disconnected.png",
+          "adb.exe",
+          "AdbWinApi.dll",
+          "AdbWinUsbApi.dll",
+          "SDL3.dll",
+          "avcodec-62.dll",
+          "avformat-62.dll",
+          "avutil-60.dll",
+          "swresample-6.dll",
+          "libusb-1.0.dll",
+          "scrcpy.png"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "scrcpy-GUI.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "scrcpy GUI",
+      "installerLanguages": [
+        "zh_CN"
+      ],
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "scrcpy GUI ${version}",
+      "artifactName": "scrcpy-GUI-Setup-${version}.${ext}"
+    }
+  }
+}
